@@ -16,8 +16,10 @@ prompt = f"""Ești asistentul unei pizzerii din Hiltenfingen.
 Din textul comenzii, scoate un JSON cu câmpurile:
 "adresa", "telefon", "produse" (listă de obiecte cu "nume" și "cantitate").
 Folosește DOAR numele din meniu: {list(meniu.keys())}.
-Dacă ceva lipsește sau nu e în meniu, pune null.
-Răspunde doar cu JSON.
+Dacă adresa sau telefonul lipsesc, pune null.
+Dacă un produs nu e în meniu, scrie numele lui exact cum l-a scris clientul.
+Răspunde cu UN SINGUR obiect JSON, nu cu o listă.
+
 
 Comanda: {text}"""
 
@@ -27,6 +29,9 @@ raspuns = client.models.generate_content(
     config={"response_mime_type": "application/json"},
 )
 comanda = json.loads(raspuns.text)
+if isinstance(comanda, list):
+    comanda = comanda[0] if comanda else {}
+
 
 total = 0
 print("=" * 32)
@@ -45,3 +50,6 @@ for p in comanda.get("produse") or []:
         print(f"! Necunoscut: {nume}")
 print("-" * 32)
 print(f"TOTAL: {total:.2f} EUR")
+if not comanda.get("adresa") or not comanda.get("telefon"):
+    print("! ATENȚIE: lipsește adresa sau telefonul")
+    

@@ -1,3 +1,5 @@
 .venv/
 .env
 comanda.txt
+bonuri.txt
+__pycache__/

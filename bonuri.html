@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1c1917">
+<title>Bestellungen</title>
+<style>
+  :root {
+    --fundal: #1c1917;
+    --text: #f5f5f4;
+    --estompat: #a8a29e;
+    --hartie: #fffdf7;
+    --cerneala: #1c1917;
+    --rosu: #b91c1c;
+    --verde: #16a34a;
+    --accent: #f59e0b;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0;
+    background: var(--fundal);
+    color: var(--text);
+    font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+  }
+  header {
+    max-width: 420px;
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  h1 { font-size: 20px; margin: 0; }
+  #stare { font-size: 13px; color: var(--estompat); display: flex; align-items: center; gap: 6px; }
+  #stare::before {
+    content: ""; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--verde); box-shadow: 0 0 0 0 var(--verde);
+    animation: puls 2s infinite;
+  }
+  #stare.offline { color: #fca5a5; }
+  #stare.offline::before { background: var(--rosu); animation: none; }
+  @keyframes puls {
+    0% { box-shadow: 0 0 0 0 rgba(22,163,74,.6); }
+    70% { box-shadow: 0 0 0 8px rgba(22,163,74,0); }
+    100% { box-shadow: 0 0 0 0 rgba(22,163,74,0); }
+  }
+  #sunet {
+    display: block; max-width: 420px; width: 100%; margin: 0 auto 16px;
+    padding: 12px; border: 1px solid #44403c; border-radius: 10px;
+    background: #292524; color: var(--text); font: inherit; cursor: pointer;
+  }
+  #lista { max-width: 420px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+  .bon {
+    background: var(--hartie);
+    color: var(--cerneala);
+    padding: 16px 14px 20px;
+    border-radius: 4px;
+    font: 13px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    box-shadow: 0 6px 20px rgba(0,0,0,.35);
+    position: relative;
+  }
+  .bon .titlu { font-weight: 700; font-size: 15px; }
+  .bon .total { font-weight: 700; font-size: 16px; }
+  .bon .avertizare { color: var(--rosu); font-weight: 600; }
+  .bon .linie { color: #a8a29e; }
+  .bon.nou { animation: intra .6s ease-out, lumina 3s ease-out; }
+  .bon.nou::after {
+    content: "NEU"; position: absolute; top: 10px; right: 10px;
+    background: var(--accent); color: var(--cerneala);
+    font: 700 11px/1 system-ui, sans-serif; padding: 5px 8px; border-radius: 99px;
+  }
+  @keyframes intra { from { transform: translateY(-24px) scale(.97); opacity: 0; } }
+  @keyframes lumina { from { box-shadow: 0 0 0 4px var(--accent), 0 6px 30px rgba(245,158,11,.6); } }
+  .gol { text-align: center; color: var(--estompat); padding: 40px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Bestellungen</h1>
+  <div id="stare">verbunden</div>
+</header>
+<button id="sunet" type="button">🔔 Ton einschalten</button>
+<div id="lista"><div class="gol">Lade…</div></div>
+
+<script>
+  const cheie = new URLSearchParams(location.search).get("cheie") || "";
+  const lista = document.getElementById("lista");
+  const stare = document.getElementById("stare");
+  const butonSunet = document.getElementById("sunet");
+  let cunoscute = null;   // bonurile văzute deja; null = prima încărcare
+  let audio = null;
+
+  butonSunet.addEventListener("click", () => {
+    audio = new (window.AudioContext || window.webkitAudioContext)();
+    suna();
+    butonSunet.hidden = true;
+  });
+
+  function suna() {
+    if (!audio) return;
+    [880, 1320].forEach((frecventa, i) => {
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.frequency.value = frecventa;
+      g.gain.setValueAtTime(0.25, audio.currentTime + i * 0.18);
+      g.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + i * 0.18 + 0.25);
+      o.connect(g).connect(audio.destination);
+      o.start(audio.currentTime + i * 0.18);
+      o.stop(audio.currentTime + i * 0.18 + 0.3);
+    });
+    if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
+  }
+
+  function deseneazaBon(text, nou) {
+    const el = document.createElement("div");
+    el.className = "bon" + (nou ? " nou" : "");
+    text.split("\n").forEach((rand, i) => {
+      const span = document.createElement("span");
+      if (/^[=-]+$/.test(rand)) span.className = "linie";
+      else if (rand.startsWith("!")) span.className = "avertizare";
+      else if (/^(TOTAL|GESAMT)/.test(rand)) span.className = "total";
+      else if (i === 1) span.className = "titlu";
+      span.textContent = rand + "\n";
+      el.appendChild(span);
+    });
+    return el;
+  }
+
+  async function incarca() {
+    try {
+      const r = await fetch("bonuri.json?cheie=" + encodeURIComponent(cheie), { cache: "no-store" });
+      if (!r.ok) throw new Error(r.status);
+      const { bonuri } = await r.json();
+      stare.textContent = "verbunden";
+      stare.className = "";
+      const noi = cunoscute ? bonuri.filter(b => !cunoscute.has(b)) : [];
+      if (cunoscute === null || noi.length) {
+        lista.replaceChildren(...bonuri.map(b => deseneazaBon(b, noi.includes(b))));
+        if (!bonuri.length) lista.innerHTML = '<div class="gol">Noch keine Bestellungen</div>';
+        if (noi.length) suna();
+      }
+      cunoscute = new Set(bonuri);
+    } catch (e) {
+      stare.textContent = "keine Verbindung";
+      stare.className = "offline";
+    }
+  }
+
+  incarca();
+  setInterval(incarca, 3000);
+</script>
+</body>
+</html>
