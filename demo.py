@@ -119,8 +119,13 @@ def fa_bon(c, telefon_apel=None):
     for p in c.get("produse") or []:
         cant = p.get("cantitate") or 1
         nume, motiv = gaseste_produs(p.get("nume"))
-        marime = (p.get("marime") or "").strip()
+        # Gemini poate trimite numere ca text ("2") sau mărimea ca număr (32).
+        marime = str(p.get("marime") or "").strip()
         eticheta = f" ({marime})" if marime else ""
+        try:
+            cant = int(cant)
+        except (TypeError, ValueError):
+            nume, motiv = None, "Menge unklar"
         if nume and marime.lower() not in MARIMI_MICI:
             # menu.json are doar prețul mărimii mici, deci nu scriem un preț pentru altă mărime.
             de_verificat = True

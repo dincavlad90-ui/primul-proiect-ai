@@ -18,7 +18,8 @@ def parola_corecta():
     auth = request.headers.get("Authorization", "")
     if not primit and auth.startswith("Bearer "):
         primit = auth[len("Bearer "):]
-    return hmac.compare_digest(primit.encode(), SECRET.encode())
+    # Fără parolă în .env refuzăm tot (altfel SECRET.encode() ar da eroare 500).
+    return bool(SECRET) and hmac.compare_digest(primit.encode(), SECRET.encode())
 
 
 def cheie_corecta():
